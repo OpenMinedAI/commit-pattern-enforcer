@@ -1,0 +1,36 @@
+{
+  "name": "commit-pattern-enforcer",
+  "version": "1.0.0",
+  "description": "A flexible GitHub Action that validates commit messages against custom regex patterns to enforce consistent commit message standards across your repository.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.js --license licenses.txt",
+    "package": "ncc build src/index.js --license licenses.txt",
+    "test": "jest",
+    "all": "npm run build && npm run package && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haseebrehanaziz/commit-pattern-enforcer.git"
+  },
+  "keywords": [
+    "github-action",
+    "commit",
+    "validation",
+    "regex",
+    "conventional-commits",
+    "git",
+    "ci",
+    "quality"
+  ],
+  "author": "Haseeb Rehan Aziz",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.1",
+    "jest": "^29.7.0"
+  }
+}

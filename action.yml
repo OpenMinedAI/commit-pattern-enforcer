@@ -1,0 +1,74 @@
+name: 'Commit Pattern Enforcer'
+description: 'A flexible GitHub Action that validates commit messages against custom regex patterns to enforce consistent commit message standards across your repository.'
+author: 'Haseeb Rehan Aziz'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  pattern:
+    description: 'Regex pattern to validate commit messages against'
+    required: false
+    default: '^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+'
+  
+  pattern-description:
+    description: 'Description of the expected commit message format'
+    required: false
+    default: 'Conventional Commits format: type(scope): description'
+  
+  check-all-commits:
+    description: 'Whether to check all commits in the push or just the latest one'
+    required: false
+    default: 'false'
+  
+  case-sensitive:
+    description: 'Whether the pattern matching should be case sensitive'
+    required: false
+    default: 'true'
+  
+  fail-on-error:
+    description: 'Whether to fail the action if validation fails'
+    required: false
+    default: 'true'
+  
+  custom-error-message:
+    description: 'Custom error message to display when validation fails'
+    required: false
+    default: ''
+
+outputs:
+  valid:
+    description: 'Whether all commit messages passed validation'
+    value: ${{ steps.validate.outputs.valid }}
+  
+  failed-commits:
+    description: 'JSON array of commit messages that failed validation'
+    value: ${{ steps.validate.outputs.failed-commits }}
+  
+  total-commits:
+    description: 'Total number of commits checked'
+    value: ${{ steps.validate.outputs.total-commits }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        pip install -r requirements.txt
+    - name: Run commit pattern enforcer
+      id: validate
+      shell: bash
+      run: python ${{ github.action_path }}/src/main.py
+      env:
+        INPUT_PATTERN: ${{ inputs.pattern }}
+        INPUT_PATTERN_DESCRIPTION: ${{ inputs.pattern-description }}
+        INPUT_CHECK_ALL_COMMITS: ${{ inputs.check-all-commits }}
+        INPUT_CASE_SENSITIVE: ${{ inputs.case-sensitive }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        INPUT_CUSTOM_ERROR_MESSAGE: ${{ inputs.custom-error-message }}
