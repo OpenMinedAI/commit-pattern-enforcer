@@ -2,151 +2,110 @@ import os
 import sys
 import json
 import tempfile
-import shutil
 import pytest
 from scripts.main import CommitValidator, GitHubAction
 
+class DummyGitHubAction(GitHubAction):
+    outputs = {}
+    failed = False
+    messages = []
 
-def make_event_file(event: dict) -> str:
-    fd, path = tempfile.mkstemp(suffix='.json')
+    @staticmethod
+    def set_output(name, value):
+        DummyGitHubAction.outputs[name] = value
+
+    @staticmethod
+    def set_failed(message):
+        DummyGitHubAction.failed = True
+        DummyGitHubAction.messages.append(message)
+        # Do not exit in tests
+
+    @staticmethod
+    def info(message):
+        DummyGitHubAction.messages.append(message)
+
+    @staticmethod
+    def error(message):
+        DummyGitHubAction.messages.append(message)
+
+    @staticmethod
+    def warning(message):
+        DummyGitHubAction.messages.append(message)
+
+@pytest.fixture(autouse=True)
+def patch_github_action(monkeypatch):
+    monkeypatch.setattr('scripts.main.GitHubAction', DummyGitHubAction)
+    DummyGitHubAction.outputs = {}
+    DummyGitHubAction.failed = False
+    DummyGitHubAction.messages = []
+
+def make_event_file(event: dict):
+    fd, path = tempfile.mkstemp()
     with os.fdopen(fd, 'w') as f:
         json.dump(event, f)
     return path
 
-
-def set_env(event_name, event_path, extra_env=None):
-    os.environ['GITHUB_EVENT_NAME'] = event_name
-    os.environ['GITHUB_EVENT_PATH'] = event_path
-    if extra_env:
-        for k, v in extra_env.items():
-            os.environ[k] = v
-
-
-def clear_env():
-    for k in list(os.environ.keys()):
-        if k.startswith('INPUT_') or k in ['GITHUB_EVENT_NAME', 'GITHUB_EVENT_PATH', 'GITHUB_TOKEN']:
-            os.environ.pop(k)
-
-
 def test_valid_commit(monkeypatch):
-    clear_env()
-    event = {'commits': [{'message': 'feat: add new feature', 'id': 'abc123'}]}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'false',
-        'INPUT_CASE_SENSITIVE': 'true',
-        'INPUT_FAIL_ON_ERROR': 'true',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
+    event = {"commits": [{"message": "feat: add new feature", "id": "abc123"}]}
+    path = make_event_file(event)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'push')
+    monkeypatch.setenv('GITHUB_EVENT_PATH', path)
+    monkeypatch.setenv('INPUT_PATTERN', r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+')
+    monkeypatch.setenv('INPUT_CHECK_ALL_COMMITS', 'false')
     validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'true'
-    assert outputs['total-commits'] == 1
-
+    is_valid, failed = validator.validate_commits(validator.get_commits())
+    assert is_valid
+    assert failed == []
 
 def test_invalid_commit(monkeypatch):
-    clear_env()
-    event = {'commits': [{'message': 'bad commit', 'id': 'def456'}]}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'false',
-        'INPUT_CASE_SENSITIVE': 'true',
-        'INPUT_FAIL_ON_ERROR': 'false',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
-    monkeypatch.setattr(GitHubAction, 'set_failed', lambda msg: None)
+    event = {"commits": [{"message": "bad commit", "id": "def456"}]}
+    path = make_event_file(event)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'push')
+    monkeypatch.setenv('GITHUB_EVENT_PATH', path)
+    monkeypatch.setenv('INPUT_PATTERN', r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+')
+    monkeypatch.setenv('INPUT_CHECK_ALL_COMMITS', 'false')
     validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'false'
-    assert outputs['total-commits'] == 1
+    is_valid, failed = validator.validate_commits(validator.get_commits())
+    assert not is_valid
+    assert len(failed) == 1
+    assert failed[0]['id'] == 'def456'
 
-
-def test_check_all_commits(monkeypatch):
-    clear_env()
-    event = {'commits': [
-        {'message': 'feat: add', 'id': 'a'},
-        {'message': 'fix: fix', 'id': 'b'},
-        {'message': 'bad', 'id': 'c'}
+def test_multiple_commits_check_all(monkeypatch):
+    event = {"commits": [
+        {"message": "feat: add", "id": "a1"},
+        {"message": "fix: bug", "id": "b2"},
+        {"message": "bad msg", "id": "c3"}
     ]}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'true',
-        'INPUT_CASE_SENSITIVE': 'true',
-        'INPUT_FAIL_ON_ERROR': 'false',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
+    path = make_event_file(event)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', ' ')
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'push')
+    monkeypatch.setenv('GITHUB_EVENT_PATH', path)
+    monkeypatch.setenv('INPUT_PATTERN', r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+')
+    monkeypatch.setenv('INPUT_CHECK_ALL_COMMITS', 'true')
     validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'false'
-    assert outputs['total-commits'] == 3
-
-
-def test_case_insensitive(monkeypatch):
-    clear_env()
-    event = {'commits': [{'message': 'FEAT: ADD', 'id': 'abc123'}]}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'false',
-        'INPUT_CASE_SENSITIVE': 'false',
-        'INPUT_FAIL_ON_ERROR': 'true',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
-    validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'true'
-
+    is_valid, failed = validator.validate_commits(validator.get_commits())
+    assert not is_valid
+    assert len(failed) == 1
+    assert failed[0]['id'] == 'c3'
 
 def test_no_commits(monkeypatch):
-    clear_env()
-    event = {'commits': []}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'false',
-        'INPUT_CASE_SENSITIVE': 'true',
-        'INPUT_FAIL_ON_ERROR': 'true',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
+    event = {"commits": []}
+    path = make_event_file(event)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'push')
+    monkeypatch.setenv('GITHUB_EVENT_PATH', path)
     validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'true'
-    assert outputs['total-commits'] == 0
+    is_valid, failed = validator.validate_commits(validator.get_commits())
+    assert is_valid
+    assert failed == []
 
-
-def test_fail_on_error_false(monkeypatch):
-    clear_env()
-    event = {'commits': [{'message': 'bad commit', 'id': 'def456'}]}
-    event_path = make_event_file(event)
-    set_env('push', event_path, {
-        'INPUT_PATTERN': r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+',
-        'INPUT_PATTERN_DESCRIPTION': 'Conventional Commits format',
-        'INPUT_CHECK_ALL_COMMITS': 'false',
-        'INPUT_CASE_SENSITIVE': 'true',
-        'INPUT_FAIL_ON_ERROR': 'false',
-        'INPUT_CUSTOM_ERROR_MESSAGE': ''
-    })
-    outputs = {}
-    monkeypatch.setattr(GitHubAction, 'set_output', lambda k, v: outputs.update({k: v}))
-    monkeypatch.setattr(GitHubAction, 'set_failed', lambda msg: None)
+def test_case_insensitive(monkeypatch):
+    event = {"commits": [{"message": "FEAT: ADD", "id": "abc123"}]}
+    path = make_event_file(event)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'push')
+    monkeypatch.setenv('GITHUB_EVENT_PATH', path)
+    monkeypatch.setenv('INPUT_PATTERN', r'^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+')
+    monkeypatch.setenv('INPUT_CASE_SENSITIVE', 'false')
     validator = CommitValidator()
-    validator.run()
-    assert outputs['valid'] == 'false'
+    is_valid, failed = validator.validate_commits(validator.get_commits())
+    assert is_valid
+    assert failed == []

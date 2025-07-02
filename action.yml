@@ -64,7 +64,7 @@ runs:
     - name: Run commit pattern enforcer
       id: validate
       shell: bash
-      run: python ${{ github.action_path }}/src/main.py
+      run: python ${{ github.action_path }}/scripts/main.py
       env:
         INPUT_PATTERN: ${{ inputs.pattern }}
         INPUT_PATTERN_DESCRIPTION: ${{ inputs.pattern-description }}
