@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate commit messages
-        uses: haseebrehan/commit-pattern-enforcer@v1.0.0
+        uses: OpenMinedAI/commit-pattern-enforcer@v1.0.0
         with:
           pattern: '^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+'
           pattern-description: 'Conventional Commits format: type(scope): description'
@@ -62,7 +62,7 @@ For more details, see [action.yml](action.yml).
 
 ## Contact & Support
 
-- **Contact:** [your-email@example.com](mailto:your-email@example.com)
+- **Contact:** [your-email@example.com](mailto:haseeb.rehan.aziz@gmail.com)
 - **Support:** [GitHub Issues](https://github.com/OpenMinedAI/commit-pattern-enforcer/issues)
 
 ## Pricing
