@@ -59,3 +59,20 @@ MIT
 ---
 
 For more details, see [action.yml](action.yml).
+
+## Contact & Support
+
+- **Contact:** [your-email@example.com](mailto:your-email@example.com)
+- **Support:** [GitHub Issues](https://github.com/OpenMinedAI/commit-pattern-enforcer/issues)
+
+## Pricing
+
+This GitHub Action is **free** to use.
+
+## Privacy Policy
+
+See our [Privacy Policy](https://github.com/OpenMinedAI/commit-pattern-enforcer/blob/main/PRIVACY.md).
+
+## Terms of Service
+
+See our [Terms of Service](https://github.com/OpenMinedAI/commit-pattern-enforcer/blob/main/TERMS.md).

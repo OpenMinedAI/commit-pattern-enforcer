@@ -1,6 +1,6 @@
 name: 'Commit Pattern Enforcer'
 description: 'A flexible GitHub Action that validates commit messages against custom regex patterns to enforce consistent commit message standards across your repository.'
-author: 'Haseeb Rehan Aziz'
+author: "Haseeb Rehan Aziz <haseeb.rehan.aziz@gmail.com>"
 branding:
   icon: 'check-circle'
   color: 'green'
