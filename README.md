@@ -62,7 +62,7 @@ For more details, see [action.yml](action.yml).
 
 ## Contact & Support
 
-- **Contact:** [your-email@example.com](mailto:haseeb.rehan.aziz@gmail.com)
+- **Contact:** [haseeb.rehan.aziz@gmail.com](mailto:haseeb.rehan.aziz@gmail.com)
 - **Support:** [GitHub Issues](https://github.com/OpenMinedAI/commit-pattern-enforcer/issues)
 
 ## Pricing
