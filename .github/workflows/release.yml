@@ -10,23 +10,25 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        node-version: '20'
-        cache: 'npm'
-    
+        python-version: '3.9'
+
     - name: Install dependencies
-      run: npm ci
-    
-    - name: Build action
-      run: npm run build
-    
-    - name: Commit and push built files
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        PYTHONPATH=. pytest
+
+    - name: Commit and push built files (if any)
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add dist/
-        git diff --staged --quiet || git commit -m "build: update built action for release ${{ github.event.release.tag_name }}"
+        git add .
+        git diff --staged --quiet || git commit -m "build: update for release ${{ github.event.release.tag_name }}"
         git push
