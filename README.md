@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate commit messages
-        uses: haseebrehanaziz/commit-pattern-enforcer@v1
+        uses: haseebrehan/commit-pattern-enforcer@v1.0.0
         with:
           pattern: '^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\(.+\))?: .+'
           pattern-description: 'Conventional Commits format: type(scope): description'
